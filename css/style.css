@@ -17,12 +17,12 @@
     --btn-num-hover: #475569;
     --btn-num-active: #1e293b;
 
-    --btn-fn-bg: #475569;         /* Cool gray for utility keys (AC, DEL, %, ( )) */
+    --btn-fn-bg: #475569;         /* Cool gray for utility keys (AC, DEL, %, √, ( )) */
     --btn-fn-hover: #64748b;
     --btn-fn-active: #334155;
     --btn-fn-text: #f1f5f9;
 
-    --btn-op-bg: #f59e0b;         /* Warm amber for math operators (+, -, ×, ÷) */
+    --btn-op-bg: #f59e0b;         /* Warm amber for math operators (+, -, ×, ÷, ^) */
     --btn-op-hover: #d97706;
     --btn-op-active: #b45309;
 
@@ -315,7 +315,7 @@ body.light-theme .display {
     font-size: 1.4rem;
 }
 
-/* 6. Keypad Grid Layout (6 Rows x 4 Columns) */
+/* 6. Keypad Grid Layout (Symmetrical 6 Rows x 4 Columns) */
 .keypad {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -372,7 +372,7 @@ body.light-theme .display {
     background-color: var(--btn-num-active);
 }
 
-/* Utility / Function Buttons (AC, DEL, %, ( )) */
+/* Utility / Function Buttons (AC, DEL, %, √, ( )) */
 .btn-function {
     background-color: var(--btn-fn-bg);
     color: var(--btn-fn-text);
@@ -392,7 +392,7 @@ body.light-theme .display {
     font-size: 1.3rem;
 }
 
-/* Math Operator Buttons (+, -, ×, ÷) */
+/* Math Operator Buttons (+, -, ×, ÷, ^) */
 .btn-operator {
     background-color: var(--btn-op-bg);
     color: var(--text-operator);
@@ -422,11 +422,6 @@ body.light-theme .display {
 .btn-equals:active,
 .btn-equals.is-pressed {
     background-color: var(--btn-eq-active);
-}
-
-/* Column Spanning */
-.span-two {
-    grid-column: span 2;
 }
 
 /* 7. Responsive Design */
