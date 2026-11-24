@@ -1,15 +1,17 @@
 /**
- * Modern Vanilla JavaScript Calculator with Parentheses & Expression Support
+ * Modern Vanilla JavaScript Calculator with Square Root (√), Power (^), and Parentheses ( )
  * 
  * Features:
  * 1. Object-Oriented Calculator class separating business logic from DOM presentation.
- * 2. Pure arithmetic computation using Shunting-Yard two-stack parsing (NO eval / new Function).
- * 3. Support for nested parentheses: ( ), auto-closing on compute, implicit multiplication (e.g. 3(4+2)).
- * 4. Standard arithmetic (+, -, ×, ÷), percentage (%), and sign toggle (±).
- * 5. Graceful handling of division by zero and floating-point precision imprecision.
- * 6. Calculation History Drawer with persistent memory and one-click value restoration.
- * 7. Light / Dark Theme Switcher with localStorage persistence.
- * 8. Full keyboard event listeners with visual button press feedback.
+ * 2. Pure arithmetic computation using Shunting-Yard Two-Stack parsing (NO eval / new Function).
+ * 3. Square Root: √(x) with implicit multiplication support (e.g. 2√(9) = 6).
+ * 4. Power Exponentiation: x ^ y with correct precedence (e.g. 2 + 3 ^ 2 = 11).
+ * 5. Nested parentheses: ( ), auto-closing on calculate, implicit multiplication.
+ * 6. Standard arithmetic (+, -, ×, ÷), percentage (%), and sign toggle (±).
+ * 7. Graceful handling of division by zero and invalid inputs (e.g. square root of negative numbers).
+ * 8. Calculation History Drawer with persistent memory and one-click value restoration.
+ * 9. Light / Dark Theme Switcher with localStorage persistence.
+ * 10. Full keyboard event listeners with visual button press feedback.
  */
 
 class Calculator {
@@ -53,9 +55,11 @@ class Calculator {
 
         if (this.expression === '0') return;
 
-        // If expression ends with a spaced operator like " + ", remove all 3 characters
-        if (/\s[+\-−×*÷/]\s$/.test(this.expression)) {
+        // If expression ends with a spaced operator like " + " or " ^ ", remove all 3 characters
+        if (/\s[+\-−×*÷/^%]\s$/.test(this.expression)) {
             this.expression = this.expression.slice(0, -3);
+        } else if (this.expression.endsWith('√(')) {
+            this.expression = this.expression.slice(0, -2);
         } else if (this.expression.length <= 1) {
             this.expression = '0';
         } else {
@@ -84,18 +88,16 @@ class Calculator {
 
         // Decimal point validation
         if (number === '.') {
-            // Check the current active number token from the end of the expression
             const lastTokenMatch = this.expression.match(/([0-9.]+)$/);
             if (lastTokenMatch && lastTokenMatch[1].includes('.')) {
-                return; // Already has a decimal point in active number
+                return; // Already contains a decimal in active number
             }
 
-            // If expression ends with an operator, open paren, or is empty, prepend '0.'
             if (this.expression === '0' || this.expression === '') {
                 this.expression = '0.';
                 return;
             }
-            if (/[\s(]$/.test(this.expression)) {
+            if (/[\s(√]$/.test(this.expression)) {
                 this.expression += '0.';
                 return;
             }
@@ -117,6 +119,34 @@ class Calculator {
     }
 
     /**
+     * Appends a square root function: √(
+     */
+    appendSqrt() {
+        if (this.isError) {
+            this.clear();
+        }
+
+        if (this.overwrite) {
+            this.expression = '√(';
+            this.overwrite = false;
+            return;
+        }
+
+        if (this.expression === '0') {
+            this.expression = '√(';
+            return;
+        }
+
+        // Implicit multiplication: if preceded by number or ')', insert ' × √('
+        if (/[0-9.)]$/.test(this.expression)) {
+            this.expression += ' × √(';
+            return;
+        }
+
+        this.expression += '√(';
+    }
+
+    /**
      * Appends an opening or closing parenthesis.
      * @param {string} paren - Either '(' or ')'
      */
@@ -126,20 +156,17 @@ class Calculator {
         }
 
         if (paren === '(') {
-            // Overwrite after equals calculation
             if (this.overwrite) {
                 this.expression = '(';
                 this.overwrite = false;
                 return;
             }
 
-            // If current expression is '0', replace with '('
             if (this.expression === '0') {
                 this.expression = '(';
                 return;
             }
 
-            // Implicit multiplication: if preceded by a number, decimal, or ')', insert ' × ('
             if (/[0-9.)]$/.test(this.expression)) {
                 this.expression += ' × (';
                 return;
@@ -157,11 +184,11 @@ class Calculator {
             const closeCount = (this.expression.match(/\)/g) || []).length;
 
             if (closeCount >= openCount) {
-                return; // Cannot close more than what is open
+                return;
             }
 
-            // Prevent closing immediately after an operator or another open parenthesis: e.g. "5 + )" or "( )"
-            if (/[\s(]$/.test(this.expression)) {
+            // Prevent closing immediately after an operator or open parenthesis
+            if (/[\s(√]$/.test(this.expression)) {
                 return;
             }
 
@@ -171,7 +198,7 @@ class Calculator {
     }
 
     /**
-     * Appends an arithmetic operator (+, −, ×, ÷).
+     * Appends an arithmetic operator (+, −, ×, ÷, ^).
      * @param {string} operation - The chosen mathematical operator
      */
     chooseOperation(operation) {
@@ -179,19 +206,17 @@ class Calculator {
             this.clear();
         }
 
-        // Standardize visual symbol
         let opSymbol = operation;
         if (opSymbol === '*') opSymbol = '×';
         if (opSymbol === '/') opSymbol = '÷';
         if (opSymbol === '-') opSymbol = '−';
 
-        // Chain calculation if previously evaluated
         if (this.overwrite) {
             this.overwrite = false;
         }
 
-        // If expression ends with an operator, replace it (e.g. entered + then clicked ×)
-        if (/\s[+\-−×*÷/]\s$/.test(this.expression)) {
+        // If expression ends with an operator, replace it (e.g. entered + then clicked ^)
+        if (/\s[+\-−×*÷/^%]\s$/.test(this.expression)) {
             this.expression = this.expression.slice(0, -3) + ` ${opSymbol} `;
             return;
         }
@@ -220,21 +245,13 @@ class Calculator {
     toggleSign() {
         if (this.isError || this.expression === '0') return;
 
-        // Find the last number token in the expression
         const match = this.expression.match(/(-?)((\d+(\.\d*)?)|(\.\d+))$/);
         if (!match) return;
 
-        const fullToken = match[0];
         const isNegative = match[1] === '-';
         const numPart = match[2];
 
-        let replacement;
-        if (isNegative) {
-            replacement = numPart;
-        } else {
-            replacement = '-' + numPart;
-        }
-
+        let replacement = isNegative ? numPart : '-' + numPart;
         const prefix = this.expression.slice(0, match.index);
         this.expression = prefix + replacement;
     }
@@ -266,7 +283,7 @@ class Calculator {
     }
 
     /**
-     * Tokenizes an arithmetic expression with parentheses into an array of tokens.
+     * Tokenizes an arithmetic expression with parentheses, powers, and roots.
      * @param {string} expr - Expression string
      * @returns {string[]} Array of token strings
      */
@@ -275,7 +292,7 @@ class Calculator {
         let i = 0;
         const len = expr.length;
 
-        while (i -lt len) {
+        while (i < len) {
             const ch = expr[i];
 
             // Ignore whitespace
@@ -284,25 +301,42 @@ class Calculator {
                 continue;
             }
 
+            // Square root symbol
+            if (ch === '√') {
+                if (tokens.length > 0) {
+                    const last = tokens[tokens.length - 1];
+                    if (/^[0-9.]+(\.[0-9]+)?$/.test(last) || last === ')') {
+                        tokens.push('×');
+                    }
+                }
+                tokens.push('√');
+                i++;
+                continue;
+            }
+
             // Parentheses
             if (ch === '(' || ch === ')') {
+                if (ch === '(' && tokens.length > 0) {
+                    const last = tokens[tokens.length - 1];
+                    if (/^[0-9.]+(\.[0-9]+)?$/.test(last) || last === ')') {
+                        tokens.push('×');
+                    }
+                }
                 tokens.push(ch);
                 i++;
                 continue;
             }
 
-            // Operators: +, −, -, ×, *, ÷, /
-            if (['+', '−', '-', '×', '*', '÷', '/'].includes(ch)) {
-                // Determine if this is a unary minus (negative number)
+            // Operators: +, −, -, ×, *, ÷, /, ^, %
+            if (['+', '−', '-', '×', '*', '÷', '/', '^', '%'].includes(ch)) {
                 const isMinus = (ch === '-' || ch === '−');
                 const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
-                const isUnary = isMinus && (prev === null || prev === '(' || ['+', '−', '-', '×', '*', '÷', '/'].includes(prev));
+                const isUnary = isMinus && (prev === null || prev === '(' || prev === '√' || ['+', '−', '-', '×', '*', '÷', '/', '^', '%'].includes(prev));
 
                 if (isUnary) {
-                    // Accumulate negative number
                     let numStr = '-';
                     i++;
-                    while (i -lt len && (/[0-9.]/).test(expr[i])) {
+                    while (i < len && /[0-9.]/.test(expr[i])) {
                         numStr += expr[i];
                         i++;
                     }
@@ -316,12 +350,15 @@ class Calculator {
                 continue;
             }
 
-            // Numbers (integers or decimals)
+            // Numbers
             if (/[0-9.]/.test(ch)) {
                 let numStr = '';
-                while (i -lt len && /[0-9.]/.test(expr[i])) {
+                while (i < len && /[0-9.]/.test(expr[i])) {
                     numStr += expr[i];
                     i++;
+                }
+                if (tokens.length > 0 && tokens[tokens.length - 1] === ')') {
+                    tokens.push('×');
                 }
                 tokens.push(numStr);
                 continue;
@@ -335,17 +372,21 @@ class Calculator {
 
     /**
      * Operator precedence mapping.
+     * ^ (power) has highest precedence (3)
+     * ×, ÷, % have precedence (2)
+     * +, − have precedence (1)
      */
     precedence(op) {
         if (op === '+' || op === '−' || op === '-') return 1;
-        if (op === '×' || op === '*' || op === '÷' || op === '/') return 2;
-        return 0; // For '('
+        if (op === '×' || op === '*' || op === '÷' || op === '/' || op === '%') return 2;
+        if (op === '^') return 3;
+        return 0;
     }
 
     /**
-     * Applies an arithmetic operator to two operands.
+     * Applies a binary arithmetic operator to two operands.
      */
-    applyOp(op, b, a) {
+    applyBinary(op, b, a) {
         switch (op) {
             case '+': return a + b;
             case '-':
@@ -356,12 +397,24 @@ class Calculator {
             case '/':
                 if (b === 0) throw new Error("Cannot divide by zero");
                 return a / b;
+            case '%':
+                if (b === 0) throw new Error("Cannot divide by zero");
+                return a % b;
+            case '^':
+                if (a < 0 && !Number.isInteger(b)) {
+                    throw new Error("Invalid input");
+                }
+                const powRes = Math.pow(a, b);
+                if (isNaN(powRes) || !isFinite(powRes)) {
+                    throw new Error("Invalid input");
+                }
+                return powRes;
             default: return 0;
         }
     }
 
     /**
-     * Evaluates an arithmetic expression containing parentheses using the Shunting-Yard Two-Stack algorithm.
+     * Evaluates an arithmetic expression using the Shunting-Yard Two-Stack algorithm.
      * @param {string} expr - Expression string
      * @returns {number} Evaluated result
      */
@@ -383,40 +436,59 @@ class Calculator {
         const values = [];
         const ops = [];
 
-        for (let i = 0; i -lt tokens.length; i++) {
+        for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
 
-            // If token is a number
+            // Number token
             if (/^-?[0-9]+(\.[0-9]+)?$/.test(token)) {
                 values.push(parseFloat(token));
-            } else if (token === '(') {
+            } else if (token === '√' || token === '(') {
                 ops.push(token);
             } else if (token === ')') {
-                while (ops.length > 0 && ops[ops.length - 1] !== '(') {
-                    const val2 = values.pop();
-                    const val1 = values.pop();
+                while (ops.length > 0 && ops[ops.length - 1] !== '(' && ops[ops.length - 1] !== '√') {
                     const op = ops.pop();
-                    values.push(this.applyOp(op, val2, val1));
+                    const b = values.pop();
+                    const a = values.pop();
+                    values.push(this.applyBinary(op, b, a));
                 }
                 if (ops.length > 0 && ops[ops.length - 1] === '(') {
                     ops.pop(); // Pop '('
                 }
-            } else if (['+', '−', '-', '×', '*', '÷', '/'].includes(token)) {
+                // Check if a square root was wrapped around this expression: e.g. √(9)
+                if (ops.length > 0 && ops[ops.length - 1] === '√') {
+                    ops.pop(); // Pop '√'
+                    const v = values.pop();
+                    if (v < 0) throw new Error("Invalid input");
+                    values.push(Math.sqrt(v));
+                }
+            } else if (['+', '−', '-', '×', '*', '÷', '/', '^', '%'].includes(token)) {
                 while (ops.length > 0 && this.precedence(ops[ops.length - 1]) >= this.precedence(token)) {
-                    const val2 = values.pop();
-                    const val1 = values.pop();
                     const op = ops.pop();
-                    values.push(this.applyOp(op, val2, val1));
+                    if (op === '√') {
+                        const v = values.pop();
+                        if (v < 0) throw new Error("Invalid input");
+                        values.push(Math.sqrt(v));
+                    } else {
+                        const b = values.pop();
+                        const a = values.pop();
+                        values.push(this.applyBinary(op, b, a));
+                    }
                 }
                 ops.push(token);
             }
         }
 
         while (ops.length > 0) {
-            const val2 = values.pop();
-            const val1 = values.pop();
             const op = ops.pop();
-            values.push(this.applyOp(op, val2, val1));
+            if (op === '√') {
+                const v = values.pop();
+                if (v < 0) throw new Error("Invalid input");
+                values.push(Math.sqrt(v));
+            } else {
+                const b = values.pop();
+                const a = values.pop();
+                values.push(this.applyBinary(op, b, a));
+            }
         }
 
         if (values.length === 0) return 0;
@@ -429,16 +501,14 @@ class Calculator {
     compute() {
         if (this.isError || this.expression === '') return;
 
-        // Clean trailing operators before evaluation (e.g. "5 + ")
         let cleanExpr = this.expression.trim();
-        if (/\s[+\-−×*÷/]$/.test(cleanExpr)) {
+        if (/\s[+\-−×*÷/^%]$/.test(cleanExpr)) {
             cleanExpr = cleanExpr.slice(0, -2).trim();
         }
 
         try {
             const result = this.evaluateExpression(cleanExpr);
 
-            // Record equation and result to history
             this.previousEquation = `${cleanExpr} =`;
             this.recordHistory(cleanExpr, result.toString());
 
@@ -452,14 +522,13 @@ class Calculator {
     }
 
     /**
-     * Formats numbers for display with comma thousand separators.
+     * Formats numbers for display with localized comma thousand separators.
      * @param {string|number} value - Value to format
      */
     formatForDisplay(value) {
         if (this.isError) return value;
         if (!value) return '0';
 
-        // Format numbers inside the expression string with localized commas where appropriate
         return value.replace(/\b\d+(\.\d+)?\b/g, (match) => {
             const parts = match.split('.');
             const integerDigits = parseFloat(parts[0]);
@@ -653,6 +722,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'decimal':
                     calculator.appendNumber('.');
                     break;
+                case 'sqrt':
+                    calculator.appendSqrt();
+                    break;
                 case 'paren-open':
                     calculator.appendParenthesis('(');
                     break;
@@ -686,13 +758,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const { key } = event;
 
         // Prevent browser conflicts on calculator keys
-        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%', '(', ')'].includes(key)) {
+        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%', '(', ')', '^'].includes(key)) {
             event.preventDefault();
         }
 
         // Close history drawer on Escape
         if (key === 'Escape' && historyPanel.classList.contains('is-open')) {
             toggleHistoryDrawer(false);
+            return;
+        }
+
+        // Power (^)
+        if (key === '^') {
+            calculator.chooseOperation('^');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-operation="^"]'));
+            return;
+        }
+
+        // Square root (r or R or s)
+        if (key.toLowerCase() === 'r') {
+            calculator.appendSqrt();
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="sqrt"]'));
             return;
         }
 

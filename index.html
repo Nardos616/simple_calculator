@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A clean, modern, and responsive calculator built with vanilla HTML, CSS, and JavaScript with parenthesis support.">
+    <meta name="description" content="A clean, modern, and responsive calculator built with vanilla HTML, CSS, and JavaScript with square root, power, and parentheses support.">
     <title>Modern Calculator</title>
     <!-- Link to external stylesheet -->
     <link rel="stylesheet" href="css/style.css">
@@ -45,41 +45,43 @@
                 <div class="current-operand" id="currentOperand" data-current-operand>0</div>
             </div>
 
-            <!-- Keypad: Responsive 6x4 CSS Grid with Parentheses ( ) -->
+            <!-- Keypad: Balanced 6x4 Grid with Square Root (√), Power (^), and Parentheses -->
             <div class="keypad">
-                <!-- Row 1: Structural Controls & Parentheses -->
+                <!-- Row 1: Clear, Delete, Parentheses -->
                 <button type="button" class="btn btn-function" data-action="clear" aria-label="Clear all">AC</button>
                 <button type="button" class="btn btn-function" data-action="delete" aria-label="Delete last character">DEL</button>
                 <button type="button" class="btn btn-function btn-paren" data-action="paren-open" aria-label="Open parenthesis">(</button>
                 <button type="button" class="btn btn-function btn-paren" data-action="paren-close" aria-label="Close parenthesis">)</button>
 
-                <!-- Row 2 -->
+                <!-- Row 2: Advanced Functions (Square Root, Power, Percent, Division) -->
+                <button type="button" class="btn btn-function" data-action="sqrt" aria-label="Square root">√</button>
+                <button type="button" class="btn btn-operator" data-operation="^" aria-label="Power exponent">^</button>
+                <button type="button" class="btn btn-function" data-action="percent" aria-label="Percentage">%</button>
+                <button type="button" class="btn btn-operator" data-operation="÷" aria-label="Divide">÷</button>
+
+                <!-- Row 3: 7, 8, 9, Multiply -->
                 <button type="button" class="btn btn-number" data-number="7">7</button>
                 <button type="button" class="btn btn-number" data-number="8">8</button>
                 <button type="button" class="btn btn-number" data-number="9">9</button>
-                <button type="button" class="btn btn-operator" data-operation="÷" aria-label="Divide">÷</button>
+                <button type="button" class="btn btn-operator" data-operation="×" aria-label="Multiply">×</button>
 
-                <!-- Row 3 -->
+                <!-- Row 4: 4, 5, 6, Subtract -->
                 <button type="button" class="btn btn-number" data-number="4">4</button>
                 <button type="button" class="btn btn-number" data-number="5">5</button>
                 <button type="button" class="btn btn-number" data-number="6">6</button>
-                <button type="button" class="btn btn-operator" data-operation="×" aria-label="Multiply">×</button>
+                <button type="button" class="btn btn-operator" data-operation="-" aria-label="Subtract">−</button>
 
-                <!-- Row 4 -->
+                <!-- Row 5: 1, 2, 3, Add -->
                 <button type="button" class="btn btn-number" data-number="1">1</button>
                 <button type="button" class="btn btn-number" data-number="2">2</button>
                 <button type="button" class="btn btn-number" data-number="3">3</button>
-                <button type="button" class="btn btn-operator" data-operation="-" aria-label="Subtract">−</button>
+                <button type="button" class="btn btn-operator" data-operation="+" aria-label="Add">+</button>
 
-                <!-- Row 5 -->
+                <!-- Row 6: Sign Toggle, Zero, Decimal, Equals -->
                 <button type="button" class="btn btn-number" data-action="toggle-sign" aria-label="Toggle positive or negative">±</button>
                 <button type="button" class="btn btn-number" data-number="0">0</button>
                 <button type="button" class="btn btn-number" data-action="decimal" aria-label="Decimal point">.</button>
-                <button type="button" class="btn btn-operator" data-operation="+" aria-label="Add">+</button>
-
-                <!-- Row 6: Percent & Equals (Span Two Columns) -->
-                <button type="button" class="btn btn-function span-two" data-action="percent" aria-label="Percentage">%</button>
-                <button type="button" class="btn btn-equals span-two" data-action="equals" aria-label="Calculate equals">=</button>
+                <button type="button" class="btn btn-equals" data-action="equals" aria-label="Calculate equals">=</button>
             </div>
         </div>
     </main>
