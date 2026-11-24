@@ -1,20 +1,21 @@
 /**
- * Modern Vanilla JavaScript Calculator
+ * Modern Vanilla JavaScript Calculator with Parentheses & Expression Support
  * 
  * Features:
  * 1. Object-Oriented Calculator class separating business logic from DOM presentation.
- * 2. Pure arithmetic computation without using eval() or new Function().
- * 3. Support for standard arithmetic (+, -, ×, ÷), percentage (%), and sign toggle (±).
- * 4. Graceful handling of division by zero and floating-point imprecision.
- * 5. Calculation History Drawer with persistent memory and one-click value restoration.
- * 6. Light / Dark Theme Switcher with localStorage persistence.
- * 7. Full keyboard event listeners with visual button press feedback.
+ * 2. Pure arithmetic computation using Shunting-Yard two-stack parsing (NO eval / new Function).
+ * 3. Support for nested parentheses: ( ), auto-closing on compute, implicit multiplication (e.g. 3(4+2)).
+ * 4. Standard arithmetic (+, -, ×, ÷), percentage (%), and sign toggle (±).
+ * 5. Graceful handling of division by zero and floating-point precision imprecision.
+ * 6. Calculation History Drawer with persistent memory and one-click value restoration.
+ * 7. Light / Dark Theme Switcher with localStorage persistence.
+ * 8. Full keyboard event listeners with visual button press feedback.
  */
 
 class Calculator {
     /**
-     * @param {HTMLElement} previousOperandElement - DOM element displaying previous operand & operator
-     * @param {HTMLElement} currentOperandElement - DOM element displaying active input or result
+     * @param {HTMLElement} previousOperandElement - DOM element displaying previous equation / status
+     * @param {HTMLElement} currentOperandElement - DOM element displaying active expression or result
      * @param {Function} onHistoryUpdate - Optional callback triggered when a new calculation is recorded
      */
     constructor(previousOperandElement, currentOperandElement, onHistoryUpdate = null) {
@@ -26,18 +27,17 @@ class Calculator {
     }
 
     /**
-     * Resets the calculator state to default values.
+     * Resets calculator state to defaults.
      */
     clear() {
-        this.currentOperand = '0';
-        this.previousOperand = '';
-        this.operation = undefined;
+        this.expression = '0';
+        this.previousEquation = '';
         this.isError = false;
         this.overwrite = false;
     }
 
     /**
-     * Deletes the most recent character from current operand.
+     * Deletes the most recent character or operator from the expression.
      */
     delete() {
         if (this.isError) {
@@ -46,23 +46,29 @@ class Calculator {
         }
 
         if (this.overwrite) {
-            this.currentOperand = '0';
+            this.expression = '0';
             this.overwrite = false;
             return;
         }
 
-        if (this.currentOperand === '0') return;
+        if (this.expression === '0') return;
 
-        // If single character or negative single digit (e.g. "-5"), reset to '0'
-        if (this.currentOperand.length <= 1 || (this.currentOperand.length === 2 && this.currentOperand.startsWith('-'))) {
-            this.currentOperand = '0';
+        // If expression ends with a spaced operator like " + ", remove all 3 characters
+        if (/\s[+\-−×*÷/]\s$/.test(this.expression)) {
+            this.expression = this.expression.slice(0, -3);
+        } else if (this.expression.length <= 1) {
+            this.expression = '0';
         } else {
-            this.currentOperand = this.currentOperand.slice(0, -1);
+            this.expression = this.expression.slice(0, -1);
+        }
+
+        if (this.expression === '') {
+            this.expression = '0';
         }
     }
 
     /**
-     * Appends a digit or decimal point to the current operand.
+     * Appends a digit or decimal point to the expression.
      * @param {string} number - The digit (0-9) or decimal point (.)
      */
     appendNumber(number) {
@@ -70,67 +76,102 @@ class Calculator {
             this.clear();
         }
 
-        // If typing a new number immediately following an '=' evaluation
         if (this.overwrite) {
-            this.currentOperand = number === '.' ? '0.' : number.toString();
+            this.expression = number === '.' ? '0.' : number.toString();
             this.overwrite = false;
             return;
         }
 
-        // Prevent multiple decimal points
-        if (number === '.' && this.currentOperand.includes('.')) return;
+        // Decimal point validation
+        if (number === '.') {
+            // Check the current active number token from the end of the expression
+            const lastTokenMatch = this.expression.match(/([0-9.]+)$/);
+            if (lastTokenMatch && lastTokenMatch[1].includes('.')) {
+                return; // Already has a decimal point in active number
+            }
 
-        // If current input is empty and decimal is pressed, prepend '0.'
-        if (this.currentOperand === '' && number === '.') {
-            this.currentOperand = '0.';
+            // If expression ends with an operator, open paren, or is empty, prepend '0.'
+            if (this.expression === '0' || this.expression === '') {
+                this.expression = '0.';
+                return;
+            }
+            if (/[\s(]$/.test(this.expression)) {
+                this.expression += '0.';
+                return;
+            }
+        }
+
+        // Prevent redundant leading zeroes (e.g. "00")
+        if (this.expression === '0' && number !== '.') {
+            this.expression = number.toString();
             return;
         }
 
-        // Prevent leading zeroes duplication (e.g., "000")
-        if (this.currentOperand === '0' && number !== '.') {
-            this.currentOperand = number.toString();
+        // If previous character was a closing parenthesis, insert implicit multiplication: )5 -> ) × 5
+        if (/\)$/.test(this.expression)) {
+            this.expression += ' × ' + number.toString();
             return;
         }
 
-        this.currentOperand = this.currentOperand.toString() + number.toString();
+        this.expression += number.toString();
     }
 
     /**
-     * Toggles the sign (positive/negative) of the current operand.
+     * Appends an opening or closing parenthesis.
+     * @param {string} paren - Either '(' or ')'
      */
-    toggleSign() {
-        if (this.isError || this.currentOperand === '0' || this.currentOperand === '') return;
+    appendParenthesis(paren) {
+        if (this.isError) {
+            this.clear();
+        }
 
-        if (this.currentOperand.startsWith('-')) {
-            this.currentOperand = this.currentOperand.slice(1);
-        } else {
-            this.currentOperand = '-' + this.currentOperand;
+        if (paren === '(') {
+            // Overwrite after equals calculation
+            if (this.overwrite) {
+                this.expression = '(';
+                this.overwrite = false;
+                return;
+            }
+
+            // If current expression is '0', replace with '('
+            if (this.expression === '0') {
+                this.expression = '(';
+                return;
+            }
+
+            // Implicit multiplication: if preceded by a number, decimal, or ')', insert ' × ('
+            if (/[0-9.)]$/.test(this.expression)) {
+                this.expression += ' × (';
+                return;
+            }
+
+            this.expression += '(';
+            return;
+        }
+
+        if (paren === ')') {
+            if (this.expression === '0' || this.isError) return;
+
+            // Count open and closed parentheses to prevent unmatched closing parentheses
+            const openCount = (this.expression.match(/\(/g) || []).length;
+            const closeCount = (this.expression.match(/\)/g) || []).length;
+
+            if (closeCount >= openCount) {
+                return; // Cannot close more than what is open
+            }
+
+            // Prevent closing immediately after an operator or another open parenthesis: e.g. "5 + )" or "( )"
+            if (/[\s(]$/.test(this.expression)) {
+                return;
+            }
+
+            this.expression += ')';
+            this.overwrite = false;
         }
     }
 
     /**
-     * Computes percentage based on current and previous operands.
-     */
-    percentage() {
-        if (this.isError || this.currentOperand === '' || isNaN(parseFloat(this.currentOperand))) return;
-
-        let result;
-        const current = parseFloat(this.currentOperand);
-
-        // Relative percentage if preceding operation is addition or subtraction (e.g., 200 + 10% = 200 + 20)
-        if (this.previousOperand !== '' && (this.operation === '+' || this.operation === '-' || this.operation === '−')) {
-            const prev = parseFloat(this.previousOperand);
-            result = (prev * current) / 100;
-        } else {
-            // Absolute percentage (e.g., 50% = 0.5)
-            result = current / 100;
-        }
-
-        this.currentOperand = this.roundAccurate(result).toString();
-    }
-
-    /**
-     * Chooses an arithmetic operator (+, −, ×, ÷).
+     * Appends an arithmetic operator (+, −, ×, ÷).
      * @param {string} operation - The chosen mathematical operator
      */
     chooseOperation(operation) {
@@ -138,73 +179,81 @@ class Calculator {
             this.clear();
         }
 
-        // If operator was chosen but user hasn't typed next number, allow switching operator
-        if (this.currentOperand === '' && this.previousOperand !== '') {
-            this.operation = operation;
+        // Standardize visual symbol
+        let opSymbol = operation;
+        if (opSymbol === '*') opSymbol = '×';
+        if (opSymbol === '/') opSymbol = '÷';
+        if (opSymbol === '-') opSymbol = '−';
+
+        // Chain calculation if previously evaluated
+        if (this.overwrite) {
+            this.overwrite = false;
+        }
+
+        // If expression ends with an operator, replace it (e.g. entered + then clicked ×)
+        if (/\s[+\-−×*÷/]\s$/.test(this.expression)) {
+            this.expression = this.expression.slice(0, -3) + ` ${opSymbol} `;
             return;
         }
 
-        // Perform intermediate chained calculation
-        if (this.previousOperand !== '') {
-            this.compute();
-            if (this.isError) return;
+        // Allow entering negative number after open parenthesis e.g. "(-"
+        if (this.expression.endsWith('(') && opSymbol === '−') {
+            this.expression += '−';
+            return;
         }
 
-        this.operation = operation;
-        this.previousOperand = this.currentOperand;
-        this.currentOperand = '';
-        this.overwrite = false;
+        // Prevent operators at the very start except minus
+        if (this.expression === '0' || this.expression === '') {
+            if (opSymbol === '−') {
+                this.expression = '−';
+                return;
+            }
+            return;
+        }
+
+        this.expression += ` ${opSymbol} `;
     }
 
     /**
-     * Evaluates the arithmetic expression between previous and current operands.
+     * Toggles the sign (positive/negative) of the active number token.
      */
-    compute() {
-        let computation;
-        const prev = parseFloat(this.previousOperand);
-        const current = parseFloat(this.currentOperand);
+    toggleSign() {
+        if (this.isError || this.expression === '0') return;
 
-        // Do nothing if either operand is missing or invalid
-        if (isNaN(prev) || isNaN(current) || this.operation == null) return;
+        // Find the last number token in the expression
+        const match = this.expression.match(/(-?)((\d+(\.\d*)?)|(\.\d+))$/);
+        if (!match) return;
 
-        switch (this.operation) {
-            case '+':
-                computation = prev + current;
-                break;
-            case '-':
-            case '−':
-                computation = prev - current;
-                break;
-            case '×':
-            case '*':
-                computation = prev * current;
-                break;
-            case '÷':
-            case '/':
-                if (current === 0) {
-                    this.isError = true;
-                    this.currentOperand = 'Cannot divide by zero';
-                    this.previousOperand = '';
-                    this.operation = undefined;
-                    return;
-                }
-                computation = prev / current;
-                break;
-            default:
-                return;
+        const fullToken = match[0];
+        const isNegative = match[1] === '-';
+        const numPart = match[2];
+
+        let replacement;
+        if (isNegative) {
+            replacement = numPart;
+        } else {
+            replacement = '-' + numPart;
         }
 
-        // Eliminate IEEE-754 binary floating-point rounding quirks
-        computation = this.roundAccurate(computation);
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + replacement;
+    }
 
-        // Record successful calculation to history
-        const equationText = `${this.getDisplayNumber(this.previousOperand)} ${this.operation} ${this.getDisplayNumber(this.currentOperand)}`;
-        this.recordHistory(equationText, computation.toString());
+    /**
+     * Computes percentage of the active number token.
+     */
+    percentage() {
+        if (this.isError || this.expression === '0') return;
 
-        this.currentOperand = computation.toString();
-        this.operation = undefined;
-        this.previousOperand = '';
-        this.overwrite = true;
+        const match = this.expression.match(/(-?\d+(\.\d+)?)$/);
+        if (!match) return;
+
+        const currentVal = parseFloat(match[0]);
+        if (isNaN(currentVal)) return;
+
+        const percentVal = this.roundAccurate(currentVal / 100);
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + percentVal.toString();
     }
 
     /**
@@ -217,44 +266,217 @@ class Calculator {
     }
 
     /**
-     * Formats numbers with thousand separators while preserving decimals.
-     * @param {string|number} number - The number to format for display
-     * @returns {string} Formatted number string
+     * Tokenizes an arithmetic expression with parentheses into an array of tokens.
+     * @param {string} expr - Expression string
+     * @returns {string[]} Array of token strings
      */
-    getDisplayNumber(number) {
-        if (this.isError) return number;
+    tokenize(expr) {
+        const tokens = [];
+        let i = 0;
+        const len = expr.length;
 
-        const stringNumber = number.toString();
-        const parts = stringNumber.split('.');
-        const integerDigits = parseFloat(parts[0]);
-        const decimalDigits = parts[1];
+        while (i -lt len) {
+            const ch = expr[i];
 
-        let integerDisplay;
-        if (parts[0] === '-0') {
-            integerDisplay = '-0';
-        } else if (isNaN(integerDigits)) {
-            integerDisplay = parts[0] === '-' ? '-' : '';
-        } else {
-            integerDisplay = integerDigits.toLocaleString('en', {
-                maximumFractionDigits: 0
-            });
+            // Ignore whitespace
+            if (ch === ' ' || ch === '\t') {
+                i++;
+                continue;
+            }
+
+            // Parentheses
+            if (ch === '(' || ch === ')') {
+                tokens.push(ch);
+                i++;
+                continue;
+            }
+
+            // Operators: +, −, -, ×, *, ÷, /
+            if (['+', '−', '-', '×', '*', '÷', '/'].includes(ch)) {
+                // Determine if this is a unary minus (negative number)
+                const isMinus = (ch === '-' || ch === '−');
+                const prev = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+                const isUnary = isMinus && (prev === null || prev === '(' || ['+', '−', '-', '×', '*', '÷', '/'].includes(prev));
+
+                if (isUnary) {
+                    // Accumulate negative number
+                    let numStr = '-';
+                    i++;
+                    while (i -lt len && (/[0-9.]/).test(expr[i])) {
+                        numStr += expr[i];
+                        i++;
+                    }
+                    tokens.push(numStr);
+                    continue;
+                }
+
+                const op = (ch === '*' ? '×' : (ch === '/' ? '÷' : (ch === '-' ? '−' : ch)));
+                tokens.push(op);
+                i++;
+                continue;
+            }
+
+            // Numbers (integers or decimals)
+            if (/[0-9.]/.test(ch)) {
+                let numStr = '';
+                while (i -lt len && /[0-9.]/.test(expr[i])) {
+                    numStr += expr[i];
+                    i++;
+                }
+                tokens.push(numStr);
+                continue;
+            }
+
+            i++;
         }
 
-        if (decimalDigits != null) {
-            return `${integerDisplay}.${decimalDigits}`;
-        }
-        return integerDisplay;
+        return tokens;
     }
 
     /**
-     * Records a completed calculation into the history tape.
-     * @param {string} equation - Equation string (e.g. "12 × 5")
-     * @param {string} result - Calculated result (e.g. "60")
+     * Operator precedence mapping.
+     */
+    precedence(op) {
+        if (op === '+' || op === '−' || op === '-') return 1;
+        if (op === '×' || op === '*' || op === '÷' || op === '/') return 2;
+        return 0; // For '('
+    }
+
+    /**
+     * Applies an arithmetic operator to two operands.
+     */
+    applyOp(op, b, a) {
+        switch (op) {
+            case '+': return a + b;
+            case '-':
+            case '−': return a - b;
+            case '×':
+            case '*': return a * b;
+            case '÷':
+            case '/':
+                if (b === 0) throw new Error("Cannot divide by zero");
+                return a / b;
+            default: return 0;
+        }
+    }
+
+    /**
+     * Evaluates an arithmetic expression containing parentheses using the Shunting-Yard Two-Stack algorithm.
+     * @param {string} expr - Expression string
+     * @returns {number} Evaluated result
+     */
+    evaluateExpression(expr) {
+        const tokens = this.tokenize(expr);
+        if (tokens.length === 0) return 0;
+
+        // Automatically close any unclosed parentheses
+        let openCount = 0;
+        tokens.forEach(t => {
+            if (t === '(') openCount++;
+            if (t === ')') openCount--;
+        });
+        while (openCount > 0) {
+            tokens.push(')');
+            openCount--;
+        }
+
+        const values = [];
+        const ops = [];
+
+        for (let i = 0; i -lt tokens.length; i++) {
+            const token = tokens[i];
+
+            // If token is a number
+            if (/^-?[0-9]+(\.[0-9]+)?$/.test(token)) {
+                values.push(parseFloat(token));
+            } else if (token === '(') {
+                ops.push(token);
+            } else if (token === ')') {
+                while (ops.length > 0 && ops[ops.length - 1] !== '(') {
+                    const val2 = values.pop();
+                    const val1 = values.pop();
+                    const op = ops.pop();
+                    values.push(this.applyOp(op, val2, val1));
+                }
+                if (ops.length > 0 && ops[ops.length - 1] === '(') {
+                    ops.pop(); // Pop '('
+                }
+            } else if (['+', '−', '-', '×', '*', '÷', '/'].includes(token)) {
+                while (ops.length > 0 && this.precedence(ops[ops.length - 1]) >= this.precedence(token)) {
+                    const val2 = values.pop();
+                    const val1 = values.pop();
+                    const op = ops.pop();
+                    values.push(this.applyOp(op, val2, val1));
+                }
+                ops.push(token);
+            }
+        }
+
+        while (ops.length > 0) {
+            const val2 = values.pop();
+            const val1 = values.pop();
+            const op = ops.pop();
+            values.push(this.applyOp(op, val2, val1));
+        }
+
+        if (values.length === 0) return 0;
+        return this.roundAccurate(values[0]);
+    }
+
+    /**
+     * Computes the current expression, stores history, and updates display.
+     */
+    compute() {
+        if (this.isError || this.expression === '') return;
+
+        // Clean trailing operators before evaluation (e.g. "5 + ")
+        let cleanExpr = this.expression.trim();
+        if (/\s[+\-−×*÷/]$/.test(cleanExpr)) {
+            cleanExpr = cleanExpr.slice(0, -2).trim();
+        }
+
+        try {
+            const result = this.evaluateExpression(cleanExpr);
+
+            // Record equation and result to history
+            this.previousEquation = `${cleanExpr} =`;
+            this.recordHistory(cleanExpr, result.toString());
+
+            this.expression = result.toString();
+            this.overwrite = true;
+        } catch (error) {
+            this.isError = true;
+            this.expression = error.message || 'Error';
+            this.previousEquation = '';
+        }
+    }
+
+    /**
+     * Formats numbers for display with comma thousand separators.
+     * @param {string|number} value - Value to format
+     */
+    formatForDisplay(value) {
+        if (this.isError) return value;
+        if (!value) return '0';
+
+        // Format numbers inside the expression string with localized commas where appropriate
+        return value.replace(/\b\d+(\.\d+)?\b/g, (match) => {
+            const parts = match.split('.');
+            const integerDigits = parseFloat(parts[0]);
+            const decimalDigits = parts[1];
+
+            let integerDisplay = isNaN(integerDigits) ? parts[0] : integerDigits.toLocaleString('en', { maximumFractionDigits: 0 });
+            return decimalDigits != null ? `${integerDisplay}.${decimalDigits}` : integerDisplay;
+        });
+    }
+
+    /**
+     * Records a completed calculation into the history drawer.
      */
     recordHistory(equation, result) {
         this.history.unshift({ equation, result });
         if (this.history.length > 25) {
-            this.history.pop(); // Keep last 25 calculations
+            this.history.pop();
         }
         if (typeof this.onHistoryUpdate === 'function') {
             this.onHistoryUpdate(this.history);
@@ -262,12 +484,11 @@ class Calculator {
     }
 
     /**
-     * Restores a previously calculated value from history into the active display.
-     * @param {string} result - Value to load
+     * Restores a previously calculated value from history.
      */
     restoreValue(result) {
         this.clear();
-        this.currentOperand = result;
+        this.expression = result;
         this.overwrite = true;
         this.updateDisplay();
     }
@@ -283,29 +504,19 @@ class Calculator {
     }
 
     /**
-     * Updates the DOM elements to mirror current state.
+     * Updates DOM display elements to mirror current state.
      */
     updateDisplay() {
         if (this.isError) {
-            this.currentOperandElement.innerText = this.currentOperand;
+            this.currentOperandElement.innerText = this.expression;
             this.currentOperandElement.classList.add('error-state');
             this.previousOperandElement.innerText = '';
             return;
         }
 
         this.currentOperandElement.classList.remove('error-state');
-
-        if (this.currentOperand === '') {
-            this.currentOperandElement.innerText = '0';
-        } else {
-            this.currentOperandElement.innerText = this.getDisplayNumber(this.currentOperand);
-        }
-
-        if (this.operation != null) {
-            this.previousOperandElement.innerText = `${this.getDisplayNumber(this.previousOperand)} ${this.operation}`;
-        } else {
-            this.previousOperandElement.innerText = '';
-        }
+        this.currentOperandElement.innerText = this.formatForDisplay(this.expression);
+        this.previousOperandElement.innerText = this.previousEquation;
     }
 }
 
@@ -342,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             li.setAttribute('aria-label', `${item.equation} equals ${item.result}. Click to restore.`);
             li.innerHTML = `
                 <span class="history-equation">${item.equation} =</span>
-                <span class="history-result">${calculator.getDisplayNumber(item.result)}</span>
+                <span class="history-result">${calculator.formatForDisplay(item.result)}</span>
             `;
 
             // Clicking a history entry loads its result into the calculator
@@ -351,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleHistoryDrawer(false);
             });
 
-            // Keyboard accessibility (Enter/Space on history item)
+            // Keyboard accessibility
             li.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -442,6 +653,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'decimal':
                     calculator.appendNumber('.');
                     break;
+                case 'paren-open':
+                    calculator.appendParenthesis('(');
+                    break;
+                case 'paren-close':
+                    calculator.appendParenthesis(')');
+                    break;
                 case 'toggle-sign':
                     calculator.toggleSign();
                     break;
@@ -468,14 +685,29 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keydown', (event) => {
         const { key } = event;
 
-        // Prevent browser conflict on calculator keys
-        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%'].includes(key)) {
+        // Prevent browser conflicts on calculator keys
+        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%', '(', ')'].includes(key)) {
             event.preventDefault();
         }
 
         // Close history drawer on Escape
         if (key === 'Escape' && historyPanel.classList.contains('is-open')) {
             toggleHistoryDrawer(false);
+            return;
+        }
+
+        // Parentheses ( and )
+        if (key === '(') {
+            calculator.appendParenthesis('(');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="paren-open"]'));
+            return;
+        }
+
+        if (key === ')') {
+            calculator.appendParenthesis(')');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="paren-close"]'));
             return;
         }
 
