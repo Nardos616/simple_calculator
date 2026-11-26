@@ -392,9 +392,19 @@ body.light-theme .display {
     font-size: 1.3rem;
 }
 
-/* Compact label buttons (1/x) */
+/* Compact label buttons (1/x, sin, cos, tan, log) */
 .btn-compact {
     font-size: 1rem;
+}
+
+/* Angle mode toggle (DEG/RAD) — highlighted amber when active */
+.btn-mode {
+    color: var(--btn-op-bg);
+    font-weight: 700;
+}
+
+.btn-mode:hover {
+    color: var(--btn-op-hover);
 }
 
 /* Wide zero button spans 2 columns */
