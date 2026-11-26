@@ -392,6 +392,16 @@ body.light-theme .display {
     font-size: 1.3rem;
 }
 
+/* Compact label buttons (1/x) */
+.btn-compact {
+    font-size: 1rem;
+}
+
+/* Wide zero button spans 2 columns */
+.btn-zero {
+    grid-column: span 2;
+}
+
 /* Math Operator Buttons (+, -, ×, ÷, ^) */
 .btn-operator {
     background-color: var(--btn-op-bg);
