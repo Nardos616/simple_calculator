@@ -1,5 +1,5 @@
 /**
- * Modern Vanilla JavaScript Calculator with Square Root (√), Power (^), and Parentheses ( )
+ * Modern Vanilla JavaScript Calculator with Square Root (√), Power (^), Parentheses ( ), Pi (π), Factorial (n!), and Reciprocal (1/x)
  * 
  * Features:
  * 1. Object-Oriented Calculator class separating business logic from DOM presentation.
@@ -8,10 +8,13 @@
  * 4. Power Exponentiation: x ^ y with correct precedence (e.g. 2 + 3 ^ 2 = 11).
  * 5. Nested parentheses: ( ), auto-closing on calculate, implicit multiplication.
  * 6. Standard arithmetic (+, -, ×, ÷), percentage (%), and sign toggle (±).
- * 7. Graceful handling of division by zero and invalid inputs (e.g. square root of negative numbers).
- * 8. Calculation History Drawer with persistent memory and one-click value restoration.
- * 9. Light / Dark Theme Switcher with localStorage persistence.
- * 10. Full keyboard event listeners with visual button press feedback.
+ * 7. Pi (π): inserts Math.PI with implicit multiplication (keyboard: p).
+ * 8. Factorial (n!): computes n! for non-negative integers up to 170 (keyboard: !).
+ * 9. Reciprocal (1/x): computes 1 divided by the active number (keyboard: i).
+ * 10. Graceful handling of division by zero and invalid inputs (e.g. square root of negative numbers).
+ * 11. Calculation History Drawer with persistent memory and one-click value restoration.
+ * 12. Light / Dark Theme Switcher with localStorage persistence.
+ * 13. Full keyboard event listeners with visual button press feedback.
  */
 
 class Calculator {
@@ -237,6 +240,97 @@ class Calculator {
         }
 
         this.expression += ` ${opSymbol} `;
+    }
+
+    /**
+     * Inserts the mathematical constant π (Pi).
+     */
+    appendPi() {
+        if (this.isError) {
+            this.clear();
+        }
+
+        const piStr = Math.PI.toString();
+
+        if (this.overwrite) {
+            this.expression = piStr;
+            this.overwrite = false;
+            return;
+        }
+
+        if (this.expression === '0') {
+            this.expression = piStr;
+            return;
+        }
+
+        // Implicit multiplication: if preceded by a number or closing paren, insert ' × π'
+        if (/[0-9.)]$/.test(this.expression)) {
+            this.expression += ' × ' + piStr;
+            return;
+        }
+
+        this.expression += piStr;
+    }
+
+    /**
+     * Computes the factorial of the current numeric token (non-negative integers only).
+     */
+    factorial() {
+        if (this.isError || this.expression === '0') return;
+
+        const match = this.expression.match(/(-?\d+(\.\d+)?)$/);
+        if (!match) return;
+
+        const n = parseFloat(match[0]);
+
+        if (!Number.isInteger(n) || n < 0) {
+            this.isError = true;
+            this.expression = 'Invalid input';
+            this.previousEquation = '';
+            return;
+        }
+
+        if (n > 170) {
+            this.isError = true;
+            this.expression = 'Overflow';
+            this.previousEquation = '';
+            return;
+        }
+
+        let result = 1;
+        for (let i = 2; i <= n; i++) {
+            result *= i;
+        }
+
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + result.toString();
+        this.previousEquation = `${n}! =`;
+        this.overwrite = true;
+    }
+
+    /**
+     * Computes the reciprocal (1/x) of the current numeric token.
+     */
+    reciprocal() {
+        if (this.isError || this.expression === '0') return;
+
+        const match = this.expression.match(/(-?\d+(\.\d+)?)$/);
+        if (!match) return;
+
+        const x = parseFloat(match[0]);
+
+        if (x === 0) {
+            this.isError = true;
+            this.expression = 'Cannot divide by zero';
+            this.previousEquation = '';
+            return;
+        }
+
+        const result = this.roundAccurate(1 / x);
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + result.toString();
+        this.previousEquation = `1/${x} =`;
+        this.overwrite = true;
     }
 
     /**
@@ -725,6 +819,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'sqrt':
                     calculator.appendSqrt();
                     break;
+                case 'pi':
+                    calculator.appendPi();
+                    break;
+                case 'factorial':
+                    calculator.factorial();
+                    break;
+                case 'reciprocal':
+                    calculator.reciprocal();
+                    break;
                 case 'paren-open':
                     calculator.appendParenthesis('(');
                     break;
@@ -758,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { key } = event;
 
         // Prevent browser conflicts on calculator keys
-        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%', '(', ')', '^'].includes(key)) {
+        if (['/', '*', '-', '+', 'Enter', '=', 'Backspace', 'Escape', '%', '(', ')', '^', '!'].includes(key)) {
             event.preventDefault();
         }
 
@@ -781,6 +884,30 @@ document.addEventListener('DOMContentLoaded', () => {
             calculator.appendSqrt();
             calculator.updateDisplay();
             triggerButtonFeedback(document.querySelector('[data-action="sqrt"]'));
+            return;
+        }
+
+        // Pi (p)
+        if (key.toLowerCase() === 'p') {
+            calculator.appendPi();
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="pi"]'));
+            return;
+        }
+
+        // Factorial (!)
+        if (key === '!') {
+            calculator.factorial();
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="factorial"]'));
+            return;
+        }
+
+        // Reciprocal (i)
+        if (key.toLowerCase() === 'i') {
+            calculator.reciprocal();
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="reciprocal"]'));
             return;
         }
 
