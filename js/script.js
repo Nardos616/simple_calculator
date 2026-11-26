@@ -28,6 +28,7 @@ class Calculator {
         this.currentOperandElement = currentOperandElement;
         this.onHistoryUpdate = onHistoryUpdate;
         this.history = [];
+        this.angleMode = 'deg'; // 'deg' | 'rad'
         this.clear();
     }
 
@@ -240,6 +241,81 @@ class Calculator {
         }
 
         this.expression += ` ${opSymbol} `;
+    }
+
+    /**
+     * Applies sin, cos, or tan to the current number.
+     * Uses degrees or radians depending on this.angleMode.
+     * @param {string} fn - 'sin' | 'cos' | 'tan'
+     */
+    applyTrig(fn) {
+        if (this.isError || this.expression === '0') return;
+
+        const match = this.expression.match(/(-?\d+(\.\d+)?)$/);
+        if (!match) return;
+
+        const raw = parseFloat(match[0]);
+        const angle = this.angleMode === 'deg' ? raw * (Math.PI / 180) : raw;
+
+        let result;
+        const label = this.angleMode === 'deg' ? `${fn}(${raw}°)` : `${fn}(${raw} rad)`;
+
+        switch (fn) {
+            case 'sin': result = Math.sin(angle); break;
+            case 'cos': result = Math.cos(angle); break;
+            case 'tan':
+                // tan(90°), tan(270°) etc. — guard for near-undefined values
+                if (this.angleMode === 'deg' && Math.abs(Math.cos(angle)) < 1e-10) {
+                    this.isError = true;
+                    this.expression = 'Undefined';
+                    this.previousEquation = `${label} =`;
+                    return;
+                }
+                result = Math.tan(angle);
+                break;
+            default: return;
+        }
+
+        result = this.roundAccurate(result);
+        // Clean up floating-point noise very close to 0 (e.g. sin(180°) ≈ 1.22e-16)
+        if (Math.abs(result) < 1e-10) result = 0;
+
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + result.toString();
+        this.previousEquation = `${label} =`;
+        this.overwrite = true;
+    }
+
+    /**
+     * Computes log base 10 of the current number.
+     */
+    applyLog() {
+        if (this.isError || this.expression === '0') return;
+
+        const match = this.expression.match(/(-?\d+(\.\d+)?)$/);
+        if (!match) return;
+
+        const x = parseFloat(match[0]);
+
+        if (x <= 0) {
+            this.isError = true;
+            this.expression = 'Invalid input';
+            this.previousEquation = '';
+            return;
+        }
+
+        const result = this.roundAccurate(Math.log10(x));
+        const prefix = this.expression.slice(0, match.index);
+        this.expression = prefix + result.toString();
+        this.previousEquation = `log(${x}) =`;
+        this.overwrite = true;
+    }
+
+    /**
+     * Toggles between degree and radian angle mode for trig functions.
+     */
+    toggleAngleMode() {
+        this.angleMode = this.angleMode === 'deg' ? 'rad' : 'deg';
     }
 
     /**
@@ -828,6 +904,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'reciprocal':
                     calculator.reciprocal();
                     break;
+                case 'sin':
+                case 'cos':
+                case 'tan':
+                    calculator.applyTrig(action);
+                    break;
+                case 'log':
+                    calculator.applyLog();
+                    break;
+                case 'toggle-angle':
+                    calculator.toggleAngleMode();
+                    document.getElementById('angleModeBtn').textContent =
+                        calculator.angleMode === 'deg' ? 'DEG' : 'RAD';
+                    break;
                 case 'paren-open':
                     calculator.appendParenthesis('(');
                     break;
@@ -908,6 +997,36 @@ document.addEventListener('DOMContentLoaded', () => {
             calculator.reciprocal();
             calculator.updateDisplay();
             triggerButtonFeedback(document.querySelector('[data-action="reciprocal"]'));
+            return;
+        }
+
+        // Trig functions: s=sin, c=cos, t=tan
+        if (key.toLowerCase() === 's') {
+            calculator.applyTrig('sin');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="sin"]'));
+            return;
+        }
+
+        if (key.toLowerCase() === 'c') {
+            calculator.applyTrig('cos');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="cos"]'));
+            return;
+        }
+
+        if (key.toLowerCase() === 't') {
+            calculator.applyTrig('tan');
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="tan"]'));
+            return;
+        }
+
+        // Log (l)
+        if (key.toLowerCase() === 'l') {
+            calculator.applyLog();
+            calculator.updateDisplay();
+            triggerButtonFeedback(document.querySelector('[data-action="log"]'));
             return;
         }
 
