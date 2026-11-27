@@ -1,28 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A clean, modern, and responsive calculator built with vanilla HTML, CSS, and JavaScript with square root, power, and parentheses support.">
+    <meta name="description"
+        content="A clean, modern, and responsive calculator built with vanilla HTML, CSS, and JavaScript with square root, power, and parentheses support.">
     <title>Modern Calculator</title>
-    <!-- Link to external stylesheet -->
+
+
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
     <main class="calculator-wrapper">
         <div class="calculator" role="region" aria-label="Calculator">
-            
+
             <!-- Top Controls Bar: Theme Switcher & History Toggle -->
             <header class="calculator-header">
                 <span class="calculator-brand">CALC</span>
                 <div class="header-actions">
-                    <button type="button" class="icon-btn" id="historyToggleBtn" aria-label="Toggle calculation history" title="View History">
-                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <button type="button" class="icon-btn" id="historyToggleBtn" aria-label="Toggle calculation history"
+                        title="View History">
+                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+                            stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
                     </button>
-                    <button type="button" class="icon-btn" id="themeToggleBtn" aria-label="Switch between light and dark theme" title="Toggle Theme">
+                    <button type="button" class="icon-btn" id="themeToggleBtn"
+                        aria-label="Switch between light and dark theme" title="Toggle Theme">
                         <span id="themeIcon">☀️</span>
                     </button>
                 </div>
@@ -49,21 +56,31 @@
             <div class="keypad">
                 <!-- Row 1: Clear, Delete, Parentheses -->
                 <button type="button" class="btn btn-function" data-action="clear" aria-label="Clear all">AC</button>
-                <button type="button" class="btn btn-function" data-action="delete" aria-label="Delete last character">DEL</button>
-                <button type="button" class="btn btn-function btn-paren" data-action="paren-open" aria-label="Open parenthesis">(</button>
-                <button type="button" class="btn btn-function btn-paren" data-action="paren-close" aria-label="Close parenthesis">)</button>
+                <button type="button" class="btn btn-function" data-action="delete"
+                    aria-label="Delete last character">DEL</button>
+                <button type="button" class="btn btn-function btn-paren" data-action="paren-open"
+                    aria-label="Open parenthesis">(</button>
+                <button type="button" class="btn btn-function btn-paren" data-action="paren-close"
+                    aria-label="Close parenthesis">)</button>
 
                 <!-- Row 2: Trig Functions + Angle Mode Toggle -->
-                <button type="button" class="btn btn-function btn-compact" data-action="sin" aria-label="Sine">sin</button>
-                <button type="button" class="btn btn-function btn-compact" data-action="cos" aria-label="Cosine">cos</button>
-                <button type="button" class="btn btn-function btn-compact" data-action="tan" aria-label="Tangent">tan</button>
-                <button type="button" class="btn btn-function btn-compact btn-mode" id="angleModeBtn" data-action="toggle-angle" aria-label="Toggle angle mode">DEG</button>
+                <button type="button" class="btn btn-function btn-compact" data-action="sin"
+                    aria-label="Sine">sin</button>
+                <button type="button" class="btn btn-function btn-compact" data-action="cos"
+                    aria-label="Cosine">cos</button>
+                <button type="button" class="btn btn-function btn-compact" data-action="tan"
+                    aria-label="Tangent">tan</button>
+                <button type="button" class="btn btn-function btn-compact btn-mode" id="angleModeBtn"
+                    data-action="toggle-angle" aria-label="Toggle angle mode">DEG</button>
 
                 <!-- Row 3: Pi, Factorial, Reciprocal, Log -->
                 <button type="button" class="btn btn-function" data-action="pi" aria-label="Pi constant">π</button>
-                <button type="button" class="btn btn-function" data-action="factorial" aria-label="Factorial">n!</button>
-                <button type="button" class="btn btn-function btn-compact" data-action="reciprocal" aria-label="Reciprocal (1/x)">1/x</button>
-                <button type="button" class="btn btn-function btn-compact" data-action="log" aria-label="Logarithm base 10">log</button>
+                <button type="button" class="btn btn-function" data-action="factorial"
+                    aria-label="Factorial">n!</button>
+                <button type="button" class="btn btn-function btn-compact" data-action="reciprocal"
+                    aria-label="Reciprocal (1/x)">1/x</button>
+                <button type="button" class="btn btn-function btn-compact" data-action="log"
+                    aria-label="Logarithm base 10">log</button>
 
                 <!-- Row 4: Square Root, Power, Percent, Division -->
                 <button type="button" class="btn btn-function" data-action="sqrt" aria-label="Square root">√</button>
@@ -90,10 +107,12 @@
                 <button type="button" class="btn btn-operator" data-operation="+" aria-label="Add">+</button>
 
                 <!-- Row 8: Sign Toggle, Zero (wide), Decimal, Equals -->
-                <button type="button" class="btn btn-function" data-action="toggle-sign" aria-label="Toggle positive or negative">±</button>
+                <button type="button" class="btn btn-function" data-action="toggle-sign"
+                    aria-label="Toggle positive or negative">±</button>
                 <button type="button" class="btn btn-number btn-zero" data-number="0">0</button>
                 <button type="button" class="btn btn-number" data-action="decimal" aria-label="Decimal point">.</button>
-                <button type="button" class="btn btn-equals" data-action="equals" aria-label="Calculate equals">=</button>
+                <button type="button" class="btn btn-equals" data-action="equals"
+                    aria-label="Calculate equals">=</button>
             </div>
         </div>
     </main>
@@ -101,4 +120,5 @@
     <!-- External JavaScript: loaded with defer so DOM is fully parsed -->
     <script src="js/script.js" defer></script>
 </body>
+
 </html>
